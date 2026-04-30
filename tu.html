@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tulasi Homestay - Management Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0f172a; 
+            --accent: #14b8a6;  /* Teal/Tulasi Green */
+            --bg: #f1f5f9;
+            --white: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --shadow: 0 4px 12px rgba(0,0,0,0.05);
+            --sidebar-width: 260px;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; color: var(--text-main); min-height: 100vh; }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--primary);
+            height: 100vh;
+            position: fixed;
+            color: white;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+        }
+
+        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .sidebar-header h2 { font-size: 1.1rem; margin: 0; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+
+        .nav-item {
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            color: #94a3b8;
+        }
+
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .nav-item.active { background: rgba(255,255,255,0.1); border-left-color: var(--accent); color: var(--accent); }
+
+        /* Main Content */
+        .main-content { margin-left: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); min-height: 100vh; transition: 0.3s; }
+        @media (max-width: 992px) { .main-content { margin-left: 0; width: 100%; } }
+
+        .top-bar { background: var(--white); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: sticky; top: 0; z-index: 100; }
+        .menu-toggle { display: none; background: var(--primary); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+        @media (max-width: 992px) { .menu-toggle { display: block; } }
+
+        .container { padding: 20px; max-width: 1200px; margin: auto; }
+        @media (min-width: 768px) { .container { padding: 30px; } }
+
+        .dashboard-section { display: none; animation: fadeIn 0.4s ease; }
+        .dashboard-section.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Cards & Stats */
+        .card { background: var(--white); border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 25px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .card-header { padding: 20px; border-bottom: 1px solid #f1f4f8; display: flex; justify-content: space-between; align-items: center; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 30px; }
+        @media (min-width: 768px) { .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
+
+        .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow); border-bottom: 4px solid var(--accent); }
+        .stat-card h3 { margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); }
+        .stat-card p { margin: 10px 0 0; font-size: 1.6rem; font-weight: 700; color: var(--primary); }
+
+        /* Tables */
+        .table-container { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 500px; }
+        th { background: #f8fafc; padding: 15px 20px; text-align: left; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid #e2e8f0; }
+        td { padding: 15px 20px; border-bottom: 1px solid #f1f4f8; font-size: 0.85rem; }
+        
+        /* Elements */
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; color: white; text-transform: uppercase; }
+        .bg-family { background: #0ea5e9; }
+        .bg-dorm { background: #6366f1; }
+        .price-tag { background: #f0fdfa; color: #0d9488; padding: 4px 10px; border-radius: 6px; font-weight: bold; border: 1px solid #ccfbf1; }
+        .btn-action { text-decoration: none; background: var(--primary); color: white; padding: 6px 14px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+
+        .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+        @media (max-width: 992px) { .overlay.active { display: block; } }
+    </style>
+</head>
+<body>
+
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>Tulasi Homestay</h2>
+            <small style="opacity: 0.6;">Admin Portal</small>
+        </div>
+        <div class="nav-item active" onclick="navTo('bookings')">Bookings & Analytics</div>
+        <div class="nav-item" onclick="navTo('inventory')">Room Inventory</div>
+        <div class="nav-item" onclick="navTo('pricing')">Price Management</div>
+        <div class="nav-item" onclick="navTo('competitors')">competitors</div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
+            <h1 id="section-title" style="font-size: 1rem; margin:0;">Bookings & Analytics</h1>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">System: <span style="color: #14b8a6; font-weight: bold;">● Active</span></div>
+        </div>
+
+        <div class="container">
+            
+            <!-- BOOKINGS SECTION -->
+            <div id="bookings" class="dashboard-section active">
+                <div class="stats-grid">
+                    <div class="stat-card"><h3>Active Bookings</h3><p>0</p></div>
+                    <div class="stat-card"><h3>Total Revenue</h3><p>₹0</p></div>
+                    <div class="stat-card"><h3>Occupancy Rate</h3><p>0%</p></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h2>Recent Booking Logs</h2></div>
+                    <div style="padding: 60px 20px; text-align: center; color: var(--text-muted);">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">📋</div>
+                        No transaction data available for Tulasi Homestay yet.
+                    </div>
+                </div>
+            </div>
+
+            <!-- INVENTORY SECTION -->
+            <div id="inventory" class="dashboard-section">
+                <div class="card">
+                    <div class="card-header"><h2>Unit Allocation</h2></div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr><th>Unit #</th><th>Type</th><th>Max Capacity</th><th>Status</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>F-101</td><td><span class="badge bg-family">Family Room</span></td><td>3 Guests</td><td><span style="color: #10b981;">Available</span></td></tr>
+                                <tr><td>F-102</td><td><span class="badge bg-family">Family Room</span></td><td>3 Guests</td><td><span style="color: #10b981;">Available</span></td></tr>
+                                <tr><td>D-201</td><td><span class="badge bg-dorm">Dormitory</span></td><td>7 Guests</td><td><span style="color: #10b981;">Available</span></td></tr>
+                                <tr><td>D-202</td><td><span class="badge bg-dorm">Dormitory</span></td><td>7 Guests</td><td><span style="color: #10b981;">Available</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRICING SECTION -->
+            <div id="pricing" class="dashboard-section">
+                <div class="card">
+                    <div class="card-header"><h2>Standard Tariff Plan</h2></div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr><th>Room Type</th><th>Occupancy</th><th>Base Price</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Family Room</td><td>3 Guests</td><td><span class="price-tag">₹6,600</span></td></tr>
+                                <tr><td>Dormitory</td><td>7 Guests</td><td><span class="price-tag">₹12,600</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COMPETITORS SECTION -->
+            <div id="competitors" class="dashboard-section">
+                <div class="card">
+                    <div class="card-header"><h2>Regional Competition Analysis</h2></div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr><th>Property Name</th><th>Price Range</th><th>Direct Link</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Pebble Bay Homestay</strong></td>
+                                    <td><span class="price-tag">Contact for Price</span></td>
+                                    <td><span style="color:var(--text-muted)">No Website</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Panther Stay Dandeli</strong></td>
+                                    <td><span class="price-tag">2,400 - 5,000</span></td>
+                                    <td><a href="https://pantherstaydandeli.com/" target="_blank" class="btn-action">Visit Site</a></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Dandeli Challet</strong></td>
+                                    <td><span class="price-tag">3,000 - 6,000</span></td>
+                                    <td><a href="https://www.dandelichalet.com/" target="_blank" class="btn-action">Visit Site</a></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Kaadumane Joida</strong></td>
+                                    <td><span class="price-tag">2,500</span></td>
+                                    <td><a href="https://dandelikaadumane.com/" target="_blank" class="btn-action">Visit Site</a></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Dandeli Kali Nature Stay</strong></td>
+                                    <td><span class="price-tag">Closed</span></td>
+                                    <td><a href="https://kalinaturestaydandeli.com/" target="_blank" class="btn-action">Status</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        function navTo(id) {
+            // Remove active class from all sections
+            document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
+            // Remove active class from all nav items
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            // Show target section
+            document.getElementById(id).classList.add('active');
+            
+            // Highlight current nav item
+            const items = document.querySelectorAll('.nav-item');
+            items.forEach(item => {
+                if(item.getAttribute('onclick').includes(id)) {
+                    item.classList.add('active');
+                }
+            });
+
+            // Update title
+            const titles = { 
+                bookings: "Bookings & Analytics", 
+                inventory: "Room Inventory", 
+                pricing: "Price Management", 
+                competitors: "Market Watch" 
+            };
+            document.getElementById('section-title').innerText = titles[id];
+
+            // Close sidebar on mobile after selection
+            if (window.innerWidth <= 992) {
+                toggleSidebar();
+            }
+        }
+    </script>
+</body>
+</html>

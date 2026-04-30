@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parampara Resort - OTA Management System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #27ae60;
+            --bg: #f0f2f5;
+            --white: #ffffff;
+            --text-main: #334155;
+            --text-muted: #64748b;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --sidebar-width: 240px;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; color: var(--text-main); min-height: 100vh; }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--primary);
+            height: 100vh;
+            position: fixed;
+            color: white;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        /* Mobile Sidebar Adjustment */
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+        }
+
+        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .sidebar-header h2 { font-size: 1.2rem; margin: 0; color: var(--accent); }
+
+        .nav-item {
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+        }
+
+        .nav-item:hover { background: rgba(255,255,255,0.05); }
+        .nav-item.active { background: rgba(255,255,255,0.1); border-left-color: var(--accent); color: var(--accent); }
+
+        /* Main Content Area */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            width: calc(100% - var(--sidebar-width));
+            min-height: 100vh;
+            transition: 0.3s ease;
+        }
+
+        @media (max-width: 992px) {
+            .main-content { margin-left: 0; width: 100%; }
+        }
+
+        .top-bar {
+            background: var(--white);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        /* Mobile Menu Toggle */
+        .menu-btn {
+            display: none;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 992px) { .menu-btn { display: block; } }
+
+        .container { padding: 15px; max-width: 1200px; margin: auto; }
+        @media (min-width: 768px) { .container { padding: 30px; } }
+
+        /* Section Visibility */
+        .dashboard-section { display: none; animation: fadeIn 0.4s ease; }
+        .dashboard-section.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Shared Card UI */
+        .card { background: var(--white); border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 25px; overflow: hidden; border: 1px solid #eef2f7; }
+        .card-header { padding: 20px; border-bottom: 1px solid #f1f4f8; display: flex; justify-content: space-between; align-items: center; }
+        .card-header h2 { font-size: 1.1rem; margin: 0; }
+        
+        /* Stats Cards */
+        .stats-grid { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; }
+        @media (min-width: 768px) { .stats-grid { flex-direction: row; gap: 20px; } }
+
+        .stat-card { background: white; padding: 20px; border-radius: 12px; flex: 1; box-shadow: var(--shadow); border-bottom: 4px solid var(--accent); }
+        .stat-card h3 { margin: 0; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); }
+        .stat-card p { margin: 10px 0 0; font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+
+        /* Responsive Table Container */
+        .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; } /* Ensures table doesn't collapse too much */
+        th { background: #f8fafc; padding: 15px 20px; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); }
+        td { padding: 15px 20px; border-bottom: 1px solid #f1f4f8; font-size: 0.9rem; }
+
+        /* Badges & Indicators */
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; color: white; white-space: nowrap; }
+        .bg-blue { background: #3498db; }
+        .bg-purple { background: #9b59b6; }
+        .bg-grey { background: #7f8c8d; }
+        
+        .price-tag { background: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; }
+        .indicator { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .high { background: #e74c3c; } .low { background: #2ecc71; } .mid { background: #f1c40f; }
+
+        .btn-action { text-decoration: none; background: var(--primary); color: white; padding: 8px 15px; border-radius: 6px; font-size: 0.8rem; transition: 0.3s; display: inline-block; }
+        
+        select { padding: 10px; border-radius: 6px; border: 1px solid #ddd; outline: none; width: 100%; max-width: 300px; font-size: 1rem; }
+
+        /* Overlay for mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        @media (max-width: 992px) { .sidebar-overlay.active { display: block; } }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>Parampara Resort</h2>
+            <small style="opacity: 0.6;">Management Portal</small>
+        </div>
+        <div class="nav-item active" onclick="navTo('bookings')">Bookings & Analytics</div>
+        <div class="nav-item" onclick="navTo('inventory')">Room Inventory</div>
+        <div class="nav-item" onclick="navTo('pricing')">Price Management</div>
+        <div class="nav-item" onclick="navTo('competitors')">Competitor</div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <button class="menu-btn" onclick="toggleSidebar()">☰ Menu</button>
+            <h1 id="section-title" style="font-size: 1.1rem; margin:0;">Bookings & Analytics</h1>
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-align: right;">
+                Status: <span style="color: var(--accent); font-weight: bold;">● Live</span>
+            </div>
+        </div>
+
+        <div class="container">
+            
+            <div id="bookings" class="dashboard-section active">
+                <div style="margin-bottom: 20px;">
+                    <select id="monthFilter" onchange="updateAnalytics()">
+                        <option value="all">All Months 2026</option>
+                        <option value="Jan">January</option>
+                        <option value="Feb">February</option>
+                        <option value="Mar">March</option>
+                        <option value="Apr">April</option>
+                    </select>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card"><h3>Total Bookings</h3><p id="totalBookings">0</p></div>
+                    <div class="stat-card"><h3>Total Revenue</h3><p id="totalRevenue">₹0</p></div>
+                    <div class="stat-card"><h3>Dominant OTA</h3><p id="topOTA">-</p></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h2>OTA Revenue Distribution</h2></div>
+                    <div style="padding: 10px;"><canvas id="otaChart" height="150"></canvas></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h2>Recent Transactions</h2></div>
+                    <div class="table-wrap">
+                        <table id="bookingTable">
+                            <thead>
+                                <tr><th>Guest Name</th><th>Phone</th><th>Channel</th><th>Amount</th></tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="inventory" class="dashboard-section">
+                <div class="card">
+                    <div class="card-header"><h2>Room Status & Capacity</h2></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>Room #</th><th>Type</th><th>Bedding</th><th>Max Capacity</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>101</td><td><span class="badge bg-blue">Super Deluxe</span></td><td>2 King Size</td><td>4</td></tr>
+                                <tr><td>102</td><td><span class="badge bg-blue">Super Deluxe</span></td><td>2 King Size</td><td>4</td></tr>
+                                <tr><td>103</td><td><span class="badge bg-blue">Super Deluxe</span></td><td>2 King Size</td><td>4</td></tr>
+                                <tr><td>104</td><td><span class="badge bg-blue">Super Deluxe</span></td><td>2 King Size</td><td>4</td></tr>
+                                <tr><td>105</td><td><span class="badge bg-blue">Deluxe Suite</span></td><td>2 King Size</td><td>4</td></tr>
+                                <tr><td>106</td><td><span class="badge bg-blue">Deluxe Suite</span></td><td>2 King Size</td><td>4</td></tr>
+                                <tr><td>107</td><td><span class="badge bg-purple">Deluxe Dorm</span></td><td>4 Twin Beds</td><td>7-9</td></tr>
+                                <tr><td>108</td><td><span class="badge bg-purple">Deluxe Dorm</span></td><td>4 Twin Beds</td><td>7-9</td></tr>
+                                <tr><td>109</td><td><span class="badge bg-blue">FamilySuite</span></td><td>2 King Size</td><td>4</td></tr>
+                                <tr><td>110</td><td><span class="badge bg-blue">Standard Suite</span></td><td>2 King Size</td><td>4</td></tr>
+                                <tr><td>111</td><td><span class="badge bg-grey">Standard</span></td><td>1 Twin Bed</td><td>2</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pricing" class="dashboard-section">
+                <div class="card">
+                    <div class="card-header"><h2>Standard Rates (Base Price)</h2></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>Category</th><th>Occupancy</th><th>Price (INR)</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Super Deluxe</td><td>4 Guests</td><td><strong>₹4,000</strong></td></tr>
+                                <tr><td>Deluxe Suite</td><td>4 Guests</td><td><strong>₹3,500</strong></td></tr>
+                                <tr><td>Deluxe Dorm (Small)</td><td>7-8 Guests</td><td><strong>₹5,000</strong></td></tr>
+                                <tr><td>Deluxe Dorm (Large)</td><td>8-9 Guests</td><td><strong>₹6,000</strong></td></tr>
+                                <tr><td>Family/Standard Suite</td><td>4 Guests</td><td><strong>₹3,000</strong></td></tr>
+                                <tr><td>Standard Room</td><td>2 Guests</td><td><strong>₹2,500</strong></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="competitors" class="dashboard-section">
+                <div class="card">
+                    <div class="card-header"><h2>Competitor Pricing Analysis</h2></div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>Competitor</th><th>Price Range</th><th>Trend</th><th>Action</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><strong>Coffee Gudda Resort</strong></td><td><span class="price-tag">6,000 - 13,000</span></td><td><span class="indicator high"></span> Premium</td><td><a href="https://www.coffeegudda.com/" target="_blank" class="btn-action">View</a></td></tr>
+                                <tr><td><strong>Nature Valley Homestay</strong></td><td><span class="price-tag">3,000 - 4,500</span></td><td><span class="indicator low"></span> Competitive</td><td><a href="https://naturevalleyhomestay.com/" target="_blank" class="btn-action">View</a></td></tr>
+                                <tr><td><strong>River Mist</strong></td><td><span class="price-tag">12,000 - 35,000</span></td><td><span class="indicator high"></span> Luxury</td><td><a href="https://rivermistresorts.com/" target="_blank" class="btn-action">View</a></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // MOBILE SIDEBAR TOGGLE
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        // NAV LOGIC WITH MOBILE AUTO-CLOSE
+        function navTo(sectionId) {
+            showSection(sectionId);
+            if (window.innerWidth <= 992) toggleSidebar();
+        }
+
+        // ORIGINAL DATA OBJECT (UNTOUCHED)
+        const bookingsData = [
+            {date:"Jan", name:"Manoj Kumar", phone:"-", ota:"MMT", amount:4000},
+            {date:"Jan", name:"Shivraj Kumar", phone:"-", ota:"MMT", amount:4000},
+            {date:"Jan", name:"Kishore", phone:"-", ota:"MMT", amount:3499},
+            {date:"Jan", name:"Kaver Niranjan", phone:"-", ota:"MMT", amount:7500},
+            {date:"Jan", name:"Vittal Goud", phone:"-", ota:"MMT", amount:4500},
+            {date:"Feb", name:"Jaswanta", phone:"-", ota:"Airbnb", amount:5775},
+            {date:"Feb", name:"Pavan", phone:"-", ota:"GoIbibo", amount:3500},
+            {date:"Feb", name:"Viswanath", phone:"-", ota:"MMT", amount:4795},
+            {date:"Feb", name:"Chirag", phone:"-", ota:"MMT", amount:4000},
+            {date:"Feb", name:"Prasanna", phone:"-", ota:"Website", amount:32200},
+            {date:"Feb", name:"Surya", phone:"7290095110", ota:"EMT", amount:3475},
+            {date:"Feb", name:"Lohith", phone:"8884327171", ota:"Agoda", amount:4125},
+            {date:"Mar", name:"Uday Acharya", phone:"-", ota:"Agoda", amount:3648},
+            {date:"Mar", name:"Madhu", phone:"-", ota:"MMT", amount:4700},
+            {date:"Mar", name:"Shivakumar", phone:"9845466622", ota:"MMT", amount:5700},
+            {date:"Apr", name:"Achuth Rao", phone:"7290095110", ota:"EMT", amount:5000},
+            {date:"Apr", name:"Guruvarun", phone:"9652030508", ota:"MMT", amount:6165}
+        ];
+
+        let myChart;
+
+        // ORIGINAL NAVIGATION LOGIC (UNTOUCHED)
+        function showSection(sectionId) {
+            document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById(sectionId).classList.add('active');
+            
+            // Find current nav item to highlight
+            const items = document.querySelectorAll('.nav-item');
+            items.forEach(item => {
+                if(item.textContent.toLowerCase().includes(sectionId.substring(0,3))) {
+                    item.classList.add('active');
+                }
+            });
+            
+            const titles = {
+                bookings: "Bookings & Analytics",
+                inventory: "Room Inventory",
+                pricing: "Price Management",
+                competitors: "Market Watch"
+            };
+            document.getElementById('section-title').innerText = titles[sectionId];
+            
+            if(sectionId === 'bookings') updateAnalytics();
+        }
+
+        // ORIGINAL ANALYTICS LOGIC (UNTOUCHED)
+        function updateAnalytics() {
+            const month = document.getElementById("monthFilter").value;
+            let filtered = month === "all" ? bookingsData : bookingsData.filter(b => b.date === month);
+
+            document.getElementById("totalBookings").innerText = filtered.length;
+            let revenue = filtered.reduce((sum, b) => sum + b.amount, 0);
+            document.getElementById("totalRevenue").innerText = "₹" + revenue.toLocaleString();
+
+            let otaCount = {};
+            filtered.forEach(b => otaCount[b.ota] = (otaCount[b.ota] || 0) + 1);
+            let top = Object.keys(otaCount).reduce((a, b) => otaCount[a] > otaCount[b] ? a : b, "-");
+            document.getElementById("topOTA").innerText = top;
+
+            let tableHTML = "";
+            filtered.forEach(b => {
+                tableHTML += `<tr><td>${b.name}</td><td>${b.phone}</td><td><span class="badge bg-blue">${b.ota}</span></td><td>₹${b.amount}</td></tr>`;
+            });
+            document.getElementById("tableBody").innerHTML = tableHTML;
+
+            if (myChart) myChart.destroy();
+            const ctx = document.getElementById('otaChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(otaCount),
+                    datasets: [{
+                        label: 'Volume of Bookings',
+                        data: Object.values(otaCount),
+                        backgroundColor: '#27ae60',
+                        borderRadius: 5
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } 
+                }
+            });
+        }
+
+        window.onload = updateAnalytics;
+    </script>
+</body>
+</html>
